@@ -11,13 +11,15 @@
 
 namespace Tymon\JWTAuth\Test;
 
-use Mockery;
-use Tymon\JWTAuth\JWT;
-use Tymon\JWTAuth\Factory;
-use Tymon\JWTAuth\Payload;
-use Tymon\JWTAuth\JWTGuard;
-use Illuminate\Http\Request;
 use Illuminate\Auth\EloquentUserProvider;
+use Illuminate\Http\Request;
+use Mockery;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\UserNotDefinedException;
+use Tymon\JWTAuth\Factory;
+use Tymon\JWTAuth\JWT;
+use Tymon\JWTAuth\JWTGuard;
+use Tymon\JWTAuth\Payload;
 use Tymon\JWTAuth\Test\Stubs\LaravelUserStub;
 
 class JWTGuardTest extends AbstractTestCase
@@ -37,7 +39,7 @@ class JWTGuardTest extends AbstractTestCase
      */
     protected $guard;
 
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -46,19 +48,13 @@ class JWTGuardTest extends AbstractTestCase
         $this->guard = new JWTGuard($this->jwt, $this->provider, Request::create('/foo', 'GET'));
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_get_the_request()
     {
         $this->assertInstanceOf(Request::class, $this->guard->getRequest());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_get_the_authenticated_user_if_a_valid_token_is_provided()
     {
         $payload = Mockery::mock(Payload::class);
@@ -90,10 +86,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertSame(1, $this->guard->userOrFail()->id);
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_get_the_authenticated_user_if_a_valid_token_is_provided_and_not_throw_an_exception()
     {
         $payload = Mockery::mock(Payload::class);
@@ -122,10 +115,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertTrue($this->guard->check());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_return_null_if_an_invalid_token_is_provided()
     {
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
@@ -138,10 +128,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertFalse($this->guard->check()); // twice
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_return_null_if_no_token_is_provided()
     {
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
@@ -154,14 +141,12 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertFalse($this->guard->check());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     * @expectedException \Tymon\JWTAuth\Exceptions\UserNotDefinedException
-     * @expectedExceptionMessage An error occurred
-     */
+    /** @test */
     public function it_should_throw_an_exception_if_an_invalid_token_is_provided()
     {
+        $this->expectException(UserNotDefinedException::class);
+        $this->expectExceptionMessage('An error occurred');
+
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
         $this->jwt->shouldReceive('getToken')->twice()->andReturn('invalid.token.here');
         $this->jwt->shouldReceive('check')->twice()->andReturn(false);
@@ -172,14 +157,12 @@ class JWTGuardTest extends AbstractTestCase
         $this->guard->userOrFail(); // twice, throws the exception
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     * @expectedException \Tymon\JWTAuth\Exceptions\UserNotDefinedException
-     * @expectedExceptionMessage An error occurred
-     */
+    /** @test */
     public function it_should_throw_an_exception_if_no_token_is_provided()
     {
+        $this->expectException(UserNotDefinedException::class);
+        $this->expectExceptionMessage('An error occurred');
+
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
         $this->jwt->shouldReceive('getToken')->andReturn(false);
         $this->jwt->shouldReceive('check')->never();
@@ -190,10 +173,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->guard->userOrFail(); // throws the exception
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_return_a_token_if_credentials_are_ok_and_user_is_found()
     {
         $credentials = ['foo' => 'bar', 'baz' => 'bob'];
@@ -230,10 +210,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertSame($token, 'foo.bar.baz');
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_return_true_if_credentials_are_ok_and_user_is_found_when_choosing_not_to_login()
     {
         $credentials = ['foo' => 'bar', 'baz' => 'bob'];
@@ -253,10 +230,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertTrue($this->guard->validate($credentials)); // twice
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_return_false_if_credentials_are_invalid()
     {
         $credentials = ['foo' => 'bar', 'baz' => 'bob'];
@@ -275,20 +249,14 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertFalse($this->guard->attempt($credentials));
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_magically_call_the_jwt_instance()
     {
         $this->jwt->shouldReceive('factory')->andReturn(Mockery::mock(Factory::class));
         $this->assertInstanceOf(Factory::class, $this->guard->factory());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_logout_the_user_by_invalidating_the_token()
     {
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
@@ -300,10 +268,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertNull($this->guard->getUser());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_refresh_the_token()
     {
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
@@ -313,10 +278,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertSame($this->guard->refresh(), 'foo.bar.baz');
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_invalidate_the_token()
     {
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
@@ -326,14 +288,12 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertTrue($this->guard->invalidate());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     * @expectedException \Tymon\JWTAuth\Exceptions\JWTException
-     * @expectedExceptionMessage Token could not be parsed from the request.
-     */
+    /** @test */
     public function it_should_throw_an_exception_if_there_is_no_token_present_when_required()
     {
+        $this->expectException(JWTException::class);
+        $this->expectExceptionMessage('Token could not be parsed from the request.');
+
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
         $this->jwt->shouldReceive('getToken')->once()->andReturn(false);
         $this->jwt->shouldReceive('refresh')->never();
@@ -341,10 +301,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->guard->refresh();
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_generate_a_token_by_id()
     {
         $user = new LaravelUserStub;
@@ -362,10 +319,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertSame('foo.bar.baz', $this->guard->tokenById(1));
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_not_generate_a_token_by_id()
     {
         $this->provider->shouldReceive('retrieveById')
@@ -376,10 +330,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertNull($this->guard->tokenById(1));
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_authenticate_the_user_by_credentials_and_return_true_if_valid()
     {
         $credentials = ['foo' => 'bar', 'baz' => 'bob'];
@@ -398,10 +349,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertTrue($this->guard->once($credentials));
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_attempt_to_authenticate_the_user_by_credentials_and_return_false_if_invalid()
     {
         $credentials = ['foo' => 'bar', 'baz' => 'bob'];
@@ -420,10 +368,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertFalse($this->guard->once($credentials));
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_authenticate_the_user_by_id_and_return_boolean()
     {
         $user = new LaravelUserStub;
@@ -437,10 +382,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertTrue($this->guard->byId(1)); // twice
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_not_authenticate_the_user_by_id_and_return_false()
     {
         $this->provider->shouldReceive('retrieveById')
@@ -452,10 +394,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertFalse($this->guard->byId(1)); // twice
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_create_a_token_from_a_user_object()
     {
         $user = new LaravelUserStub;
@@ -475,10 +414,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertSame('foo.bar.baz', $token);
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_get_the_payload()
     {
         $this->jwt->shouldReceive('setRequest')->andReturn($this->jwt);
@@ -487,10 +423,7 @@ class JWTGuardTest extends AbstractTestCase
         $this->assertInstanceOf(Payload::class, $this->guard->payload());
     }
 
-    /**
-     * @test
-     * @group laravel-5.2
-     */
+    /** @test */
     public function it_should_be_macroable()
     {
         $this->guard->macro('foo', function () {
