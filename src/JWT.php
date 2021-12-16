@@ -101,14 +101,19 @@ class JWT
     public function refresh($forceForever = false, $resetClaims = false)
     {
         $this->requireToken();
-        $this->manager->setRefreshFlow();
-
-        if (!$user = $this->authenticate()) {
+        if (isset($user))
+        {
+            $this->manager->setRefreshFlow();
+            if (!$user = $this->authenticate()) {
             throw new UnauthorizedHttpException('jwt-auth', 'User not found');
+            }
+            return $this->manager->customClaims($this->getClaimsArray($user))
+                ->refresh($this->token, $forceForever, $resetClaims)
+                ->get();
         }
-        return $this->manager->customClaims($this->getClaimsArray($user))
-            ->refresh($this->token, $forceForever, $resetClaims)
-            ->get();
+        return $this->manager->customClaims($this->getCustomClaims())
+                     ->refresh($this->token, $forceForever, $resetClaims)
+                     ->get();
     }
 
     /**
