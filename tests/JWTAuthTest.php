@@ -192,19 +192,6 @@ class JWTAuthTest extends AbstractTestCase
     }
 
     /** @test */
-    public function it_should_refresh_a_token()
-    {
-        $newToken = Mockery::mock(Token::class);
-        $newToken->shouldReceive('get')->once()->andReturn('baz.bar.foo');
-
-        $this->manager->shouldReceive('customClaims->refresh')->once()->andReturn($newToken);
-
-        $result = $this->jwtAuth->setToken('foo.bar.baz')->refresh();
-
-        $this->assertSame($result, 'baz.bar.foo');
-    }
-
-    /** @test */
     public function it_should_invalidate_a_token()
     {
         $token = new Token('foo.bar.baz');
