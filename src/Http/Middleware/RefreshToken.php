@@ -12,9 +12,10 @@
 namespace Tymon\JWTAuth\Http\Middleware;
 
 use Closure;
-use Tymon\JWTAuth\Exceptions\JWTException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
+/** @deprecated */
 class RefreshToken extends BaseMiddleware
 {
     /**

@@ -11,18 +11,19 @@
 
 namespace Tymon\JWTAuth\Test\Http;
 
-use Mockery;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Crypt;
-use Tymon\JWTAuth\Http\Parser\Parser;
-use Tymon\JWTAuth\Http\Parser\Cookies;
-use Tymon\JWTAuth\Test\AbstractTestCase;
+use Mockery;
+use Tymon\JWTAuth\Contracts\Http\Parser as ParserContract;
 use Tymon\JWTAuth\Http\Parser\AuthHeaders;
+use Tymon\JWTAuth\Http\Parser\Cookies;
 use Tymon\JWTAuth\Http\Parser\InputSource;
+use Tymon\JWTAuth\Http\Parser\LumenRouteParams;
+use Tymon\JWTAuth\Http\Parser\Parser;
 use Tymon\JWTAuth\Http\Parser\QueryString;
 use Tymon\JWTAuth\Http\Parser\RouteParams;
-use Tymon\JWTAuth\Http\Parser\LumenRouteParams;
+use Tymon\JWTAuth\Test\AbstractTestCase;
 
 class ParserTest extends AbstractTestCase
 {
@@ -105,6 +106,62 @@ class ParserTest extends AbstractTestCase
         $parser->setRequest($request2);
         $this->assertSame($parser->parseToken(), 'foobarbaz');
         $this->assertTrue($parser->hasToken());
+    }
+
+    /** @test */
+    public function it_should_not_strip_trailing_hyphens_from_the_authorization_header()
+    {
+        $request = Request::create('foo', 'POST');
+        $request->headers->set('Authorization', 'Bearer foobar--');
+
+        $parser = new Parser($request);
+
+        $parser->setChain([
+            new QueryString,
+            new InputSource,
+            new AuthHeaders,
+            new RouteParams,
+        ]);
+
+        $this->assertSame($parser->parseToken(), 'foobar--');
+        $this->assertTrue($parser->hasToken());
+    }
+
+    /**
+     * @test
+     * @dataProvider whitespaceProvider
+     */
+    public function it_should_handle_excess_whitespace_from_the_authorization_header($whitespace)
+    {
+        $request = Request::create('foo', 'POST');
+        $request->headers->set('Authorization', "Bearer{$whitespace}foobar{$whitespace}");
+
+        $parser = new Parser($request);
+
+        $parser->setChain([
+            new QueryString,
+            new InputSource,
+            new AuthHeaders,
+            new RouteParams,
+        ]);
+
+        $this->assertSame($parser->parseToken(), 'foobar');
+        $this->assertTrue($parser->hasToken());
+    }
+
+    public function whitespaceProvider()
+    {
+        return [
+            'space' => [' '],
+            'multiple spaces' => ['    '],
+            'tab' => ["\t"],
+            'multiple tabs' => ["\t\t\t"],
+            'new line' => ["\n"],
+            'multiple new lines' => ["\n\n\n"],
+            'carriage return' => ["\r"],
+            'carriage returns' => ["\r\r\r"],
+            'mixture of whitespace' => ["\t \n \r \t \n"],
+        ];
     }
 
     /** @test */
@@ -417,6 +474,39 @@ class ParserTest extends AbstractTestCase
     {
         $cookies = (new Cookies)->setKey('test');
         $this->assertInstanceOf(Cookies::class, $cookies);
+    }
+
+    /** @test */
+    public function it_should_add_custom_parser()
+    {
+        $request = Request::create('foo', 'GET', ['foo' => 'bar']);
+
+        $customParser = Mockery::mock(ParserContract::class);
+        $customParser->shouldReceive('parse')->with($request)->andReturn('foobar');
+
+        $parser = new Parser($request);
+        $parser->addParser($customParser);
+
+        $this->assertSame($parser->parseToken(), 'foobar');
+        $this->assertTrue($parser->hasToken());
+    }
+
+    /** @test */
+    public function it_should_add_multiple_custom_parser()
+    {
+        $request = Request::create('foo', 'GET', ['foo' => 'bar']);
+
+        $customParser1 = Mockery::mock(ParserContract::class);
+        $customParser1->shouldReceive('parse')->with($request)->andReturn(false);
+
+        $customParser2 = Mockery::mock(ParserContract::class);
+        $customParser2->shouldReceive('parse')->with($request)->andReturn('foobar');
+
+        $parser = new Parser($request);
+        $parser->addParser([$customParser1, $customParser2]);
+
+        $this->assertSame($parser->parseToken(), 'foobar');
+        $this->assertTrue($parser->hasToken());
     }
 
     protected function getRouteMock($expectedParameterValue = null, $expectedParameterName = 'token')
